@@ -40,7 +40,7 @@ public struct MathView: View {
                 }
             }
         }
-        .frame(maxWidth: .infinity, alignment: displayMode ? .center : .leading)
+        .frame(maxWidth: displayMode ? .infinity : nil, alignment: displayMode ? .center : .leading)
         .contextMenu {
             Button(showSource ? "Show Rendered" : "Show Source") { showSource.toggle() }
             Button("Copy Source") { copy(tex) }
@@ -48,7 +48,7 @@ public struct MathView: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("Formula"))
         .accessibilityValue(Text(tex))
-        .task(id: "\(tex)|\(color)|\(fontSize)|\(displayMode)") { await render() }
+        .task(id: KaTeXRenderer.key(tex, displayMode, fontSize, color)) { await render() }
     }
 
     private func source(note: String?) -> some View {
@@ -61,13 +61,18 @@ public struct MathView: View {
     }
 
     private func render() async {
+        guard !Task.isCancelled else { return }
         let renderer = KaTeXRenderer.shared
         if let hit = renderer.cached(tex, displayMode: displayMode, fontSize: fontSize, color: color) {
             apply(hit); return
         }
+        state = .rendering
         do {
-            apply(.success(try await renderer.render(tex, displayMode: displayMode, fontSize: fontSize, color: color)))
+            let artwork = try await renderer.render(tex, displayMode: displayMode, fontSize: fontSize, color: color)
+            guard !Task.isCancelled else { return }
+            apply(.success(artwork))
         } catch {
+            guard !Task.isCancelled else { return }
             apply(.failure(error))
         }
     }

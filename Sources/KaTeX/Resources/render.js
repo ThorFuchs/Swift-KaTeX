@@ -18,6 +18,8 @@ function loadFonts() {
     await loadFonts();
     const box = document.getElementById('box');
     box.style.fontSize = fontPx + 'px';
+    // Clear the previous value first: assigning an invalid CSS color leaves it unchanged.
+    box.style.color = '';
     box.style.color = color;
     box.textContent = '';
     try {
