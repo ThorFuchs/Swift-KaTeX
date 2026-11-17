@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.1 (unreleased)
+## 0.1.1 (2026-11-17)
 
 - Avoid stale artwork when a view's inputs change and honor cancellation before rendering cached or queued requests.
 - Use unambiguous cache keys, reject invalid font sizes, and reset the previous CSS color before each render.

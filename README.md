@@ -9,7 +9,7 @@ and add the `KaTeX` product to your target. For a SwiftPM package:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/ThorFuchs/Swift-KaTeX.git", from: "0.1.0"),
+    .package(url: "https://github.com/ThorFuchs/Swift-KaTeX.git", from: "0.1.1"),
 ],
 targets: [
     .target(name: "YourTarget", dependencies: [.product(name: "KaTeX", package: "Swift-KaTeX")]),
