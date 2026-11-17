@@ -47,7 +47,7 @@ art.baseline  // from the top, for inline alignment
 - **The TeX is data.** It is passed as an argument to the page, never interpolated into script.
 - **Nothing is loaded from the network.** Every `http`/`https` load is blocked, and the CSP allows only the package's own script, styles and fonts.
 - **KaTeX runs with `trust: false`:** `\href`, `\url` and `\includegraphics` render as text, never as links or loads.
-- Sources are limited to 20,000 Swift characters; KaTeX uses `maxExpand: 1000` and `maxSize: 50`. Waiting in the render queue is limited to 30 seconds. Content-rule compilation, page loading, JavaScript rendering, and PDF creation each have their own 10-second deadline. These are asynchronous operation deadlines, not a process sandbox or a complete resource limit for untrusted input.
+- Sources are limited to 20,000 Swift characters; KaTeX uses `maxExpand: 1000` and `maxSize: 50`. Waiting in the render queue is limited to 60 seconds. Content-rule compilation, page loading, JavaScript rendering, and PDF creation each have their own 30-second deadline. These are asynchronous operation deadlines, not a process sandbox or a complete resource limit for untrusted input.
 
 ## Related project
 

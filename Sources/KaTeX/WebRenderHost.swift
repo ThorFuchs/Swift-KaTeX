@@ -35,7 +35,7 @@ import AppKit
     }
 
     /// Runs `body` with exclusive use of the loaded page.
-    func exclusive<T>(queueTimeout: Duration = .seconds(30), _ body: (WKWebView) async throws -> T) async throws -> T {
+    func exclusive<T>(queueTimeout: Duration = .seconds(60), _ body: (WKWebView) async throws -> T) async throws -> T {
         try await acquire(timeout: queueTimeout)
         defer { release() }
         try Task.checkCancellation()
@@ -125,7 +125,7 @@ import AppKit
     }
 
     /// Vector PDF of `rect` (CSS pixels = points), after growing the view to contain it.
-    func pdf(_ view: WKWebView, rect: CGRect, timeout: Duration = .seconds(10), createPDF: @escaping @MainActor (WKWebView, WKPDFConfiguration) async throws -> Data = { view, configuration in
+    func pdf(_ view: WKWebView, rect: CGRect, timeout: Duration = .seconds(30), createPDF: @escaping @MainActor (WKWebView, WKPDFConfiguration) async throws -> Data = { view, configuration in
         try await view.pdf(configuration: configuration)
     }) async throws -> Data {
         let needed = CGSize(width: max(view.frame.width, rect.maxX + 8), height: max(view.frame.height, rect.maxY + 8))
@@ -159,7 +159,7 @@ import AppKit
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .nonPersistent()
         let rules = #"[{"trigger":{"url-filter":"^https?:"},"action":{"type":"block"}}]"#
-        let compiled = try await withDeadline(.seconds(10)) {
+        let compiled = try await withDeadline(.seconds(30)) {
             RuleList(try await WKContentRuleListStore.default()?.compileContentRuleList(forIdentifier: "swift-webrender-offline", encodedContentRuleList: rules))
         }
         guard let list = compiled.value else {
@@ -180,7 +180,7 @@ import AppKit
         #endif
         webView = view
         let deadline = Task { @MainActor in
-            do { try await Task.sleep(for: .seconds(10)) } catch { return }
+            do { try await Task.sleep(for: .seconds(30)) } catch { return }
             guard self.webView === view, let loading = self.loading else { return }
             self.loading = nil
             self.discard()

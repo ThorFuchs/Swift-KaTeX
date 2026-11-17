@@ -62,7 +62,7 @@ public enum KaTeXError: Error, Sendable, Equatable {
         return try await host.exclusive { view in
             let r = try await host.call(view, "return await window.renderTeX(tex, display, fontPx, color);",
                                         arguments: ["tex": tex, "display": display, "fontPx": Double(fontSize), "color": color],
-                                        timeout: .seconds(10))
+                                        timeout: .seconds(30))
             if let message = r["error"] as? String { throw KaTeXError.parse(message) }
             guard let x = r["x"] as? Double, let y = r["y"] as? Double, let w = r["width"] as? Double, let h = r["height"] as? Double,
                   w > 0, h > 0 else { throw KaTeXError.engine("no measurable result") }

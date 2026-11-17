@@ -5,6 +5,7 @@
 - Avoid stale artwork when a view's inputs change and honor cancellation before rendering cached or queued requests.
 - Use unambiguous cache keys, reject invalid font sizes, and reset the previous CSS color before each render.
 - Bound queue waits, content-rule compilation, page loading, JavaScript rendering, and PDF creation; recover the host after a rendering or PDF timeout.
+- Allow additional startup time for WebKit on slower iOS simulators.
 - Document installation, platform limits, and the distinct Swift-MD server-side adapter.
 - Add macOS and iOS Simulator test jobs for GitHub Actions.
 
