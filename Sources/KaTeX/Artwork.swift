@@ -3,11 +3,20 @@ import CoreGraphics
 import Foundation
 import SwiftUI
 
-/// Vector artwork: a one-page PDF with its size in points and, for inline use, its baseline
-/// measured from the top. The PDF is what export embeds; the view draws the same page.
+/// A rendered formula as a one-page vector PDF and its layout measurements.
+///
+/// Obtain artwork from ``KaTeXRenderer/render(_:displayMode:fontSize:color:)``.
+/// The PDF has a transparent background. Its color is fixed at rendering time.
+/// The public data and measurements are immutable.
 public final class Artwork: @unchecked Sendable {
+    /// The one-page vector PDF data.
     public let pdf: Data
+    /// The natural artwork size in points.
     public let size: CGSize
+    /// The baseline measured in points from the top of the artwork.
+    ///
+    /// For display math, this is the bottom edge. For inline math, it is the
+    /// measured typographic baseline used by ``MathView`` for alignment.
     public let baseline: CGFloat
     /// Immutable after creation; only read for drawing.
     let page: CGPDFPage?

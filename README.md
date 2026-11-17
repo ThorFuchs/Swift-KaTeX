@@ -30,17 +30,48 @@ art.size      // points
 art.baseline  // from the top, for inline alignment
 ```
 
+The default font size follows Dynamic Type. A `fontSize` passed explicitly is
+a fixed point size; use `@ScaledMetric` in the caller if that size should scale.
+For inline math, an `HStack(alignment: .firstTextBaseline)` aligns the formula
+with adjacent views. This doesn't insert a view into a wrapping `Text` paragraph.
+
+Use the following modifiers on a math view or an ancestor to select a color and
+share a custom renderer. Without them, math uses the primary color and
+`KaTeXRenderer.shared`. The renderer is main-actor isolated; retain a custom
+instance for as long as its views should share a host and cache.
+
+```swift
+import KaTeX
+import SwiftUI
+
+struct FormulaGroup: View {
+    @State private var renderer = KaTeXRenderer()
+
+    var body: some View {
+        VStack {
+            MathView(#"a^2+b^2=c^2"#)
+            MathView(#"\sqrt{x}"#)
+        }
+        .mathRenderer(renderer)
+        .mathColor(.blue)
+    }
+}
+```
+
+The color is resolved in the view's environment and baked into the PDF.
+Arbitrary SwiftUI foreground styles, such as gradients, aren't inherited.
+
 ## How it works
 
-- **One shared renderer.** One hidden `WKWebView` serves the whole app. It loads KaTeX once from the package's own files, renders one formula at a time, and returns a PDF of the measured box. Results are cached by source, display mode, size and color.
+- **A shared renderer by default.** One hidden `WKWebView` loads KaTeX from the package's own files, renders one formula at a time, and returns a PDF of the measured box. Results are cached by source, display mode, size and color. Custom renderers have their own hosts and caches.
 - **The view draws artwork, not a WebView.** `MathView` draws that PDF natively:
   - it follows the primary text color in light and dark;
   - it scales down to fit;
   - its context menu has **Show Source** and **Copy Source**;
   - VoiceOver reads the TeX.
 - **Rejected formulas stay visible.** A formula KaTeX rejects shows its source with KaTeX's reason, never a blank.
-- `fontSize` is an explicit point size, not an automatically scaled Dynamic Type text style. For accessible scaling, pass a value derived from `@ScaledMetric` in the containing view.
-- Inline artwork exposes a baseline from its top through `Artwork.baseline`; `MathView` does not currently provide custom baseline alignment with adjacent SwiftUI text.
+- Inline artwork exposes a baseline from its top through `Artwork.baseline`;
+  `MathView` uses it for first and last baseline alignment with adjacent views.
 
 ## Safety
 
@@ -60,6 +91,8 @@ art.baseline  // from the top, for inline alignment
 - The package uses SwiftUI and WebKit and does not support Linux.
 - tvOS is not supported: its SDK does not provide the WebKit module used by the renderer.
 - Run `swift test` on macOS. The rendering tests require a working WebKit content process.
+- In Xcode, choose **Product > Build Documentation** to browse the DocC guides.
+  Run `Scripts/build-docc.sh` to validate the API reference and guide examples.
 
 ## Updating KaTeX
 

@@ -20,6 +20,8 @@ jobs:
         run: |
           xcodebuild -version
           swift --version
+      - name: Build and validate DocC
+        run: Scripts/build-docc.sh "$RUNNER_TEMP/katex-docc-build" "$RUNNER_TEMP/KaTeX.doccarchive"
       - name: Test
         run: swift test
 

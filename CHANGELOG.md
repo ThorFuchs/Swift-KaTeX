@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Add optional renderer and color injection for math view hierarchies.
+- Scale the default math size with Dynamic Type while preserving explicit point sizes.
+- Align inline formulas with adjacent views using their measured baseline.
+- Add DocC API documentation, guides, and automated documentation checks.
+
 ## 0.1.1 (2026-11-17)
 
 - Avoid stale artwork when a view's inputs change and honor cancellation before rendering cached or queued requests.

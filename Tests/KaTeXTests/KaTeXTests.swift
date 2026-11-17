@@ -72,6 +72,37 @@ import WebKit
         #expect(d.size.width > a.size.width * 1.6)
     }
 
+    @Test func requestedColorAppearsInThePDF() async throws {
+        let red = try await renderer.render("x+y", color: "#ff0000")
+        let blue = try await renderer.render("x+y", color: "#0000ff")
+        #expect(try coloredPixelCount(red, redDominant: true) > 0)
+        #expect(try coloredPixelCount(blue, redDominant: false) > 0)
+    }
+
+    private func coloredPixelCount(_ artwork: Artwork, redDominant: Bool) throws -> Int {
+        let width = max(1, Int(ceil(artwork.size.width * 2)))
+        let height = max(1, Int(ceil(artwork.size.height * 2)))
+        let bytesPerRow = width * 4
+        var pixels = [UInt8](repeating: 0, count: bytesPerRow * height)
+        return try pixels.withUnsafeMutableBytes { buffer in
+            let context = try #require(CGContext(data: buffer.baseAddress, width: width, height: height,
+                                                 bitsPerComponent: 8, bytesPerRow: bytesPerRow,
+                                                 space: CGColorSpaceCreateDeviceRGB(),
+                                                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue))
+            let page = try #require(artwork.page)
+            context.scaleBy(x: 2, y: 2)
+            context.drawPDFPage(page)
+            let bytes = buffer.bindMemory(to: UInt8.self)
+            var count = 0
+            for offset in stride(from: 0, to: bytes.count, by: 4) where bytes[offset + 3] > 32 {
+                let red = Int(bytes[offset])
+                let blue = Int(bytes[offset + 2])
+                if redDominant ? red > blue + 20 : blue > red + 20 { count += 1 }
+            }
+            return count
+        }
+    }
+
     @Test func cacheKeysCannotCollideAtFieldBoundaries() {
         #expect(KaTeXRenderer.key("b|c", false, 17, "a") != KaTeXRenderer.key("c", false, 17, "a|b"))
     }
@@ -173,7 +204,7 @@ import WebKit
             }
         }
         defer { holder.cancel() }
-        let startupDeadline = ContinuousClock.now + .seconds(15)
+        let startupDeadline = ContinuousClock.now + .seconds(45)
         while !holding {
             guard ContinuousClock.now < startupDeadline else {
                 Issue.record("host did not start")

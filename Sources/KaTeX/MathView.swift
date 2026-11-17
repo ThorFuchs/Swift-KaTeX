@@ -1,32 +1,71 @@
 // SPDX-License-Identifier: Apache-2.0
 import SwiftUI
 
-/// Display (or inline) math rendered by KaTeX as vector artwork.
+/// A SwiftUI view that renders TeX as vector artwork using bundled KaTeX.
 ///
-/// - The color follows the environment's primary text color, light or dark.
-/// - Wider than the space offered, the artwork scales down uniformly.
-/// - The context menu offers "Show Source" and "Copy Source"; VoiceOver reads the TeX.
-/// - A formula KaTeX rejects shows its source in monospace with KaTeX's reason.
+/// Pass TeX source without delimiters. The default point size scales with
+/// Dynamic Type; use ``init(_:displayMode:fontSize:)`` for a fixed size. The
+/// view draws a PDF, scales it down to fit, and follows `Color.primary` unless
+/// you set a math color with `.mathColor(_:)`.
+///
+/// Inline views provide first and last text baselines for alignment alongside
+/// other views. This doesn't embed a view inside a wrapping `Text` paragraph.
+/// The context menu offers Show Source and Copy Source; VoiceOver reads the
+/// TeX. A rejected formula displays its source and a reason.
 public struct MathView: View {
     private let tex: String
     private let displayMode: Bool
-    private let fontSize: CGFloat
+    private let explicitFontSize: CGFloat?
     @Environment(\.self) private var environment
+    @Environment(\.mathRenderer) private var injectedRenderer
+    @Environment(\.mathColor) private var mathColor
+    @ScaledMetric(relativeTo: .body) private var scaledFontSize: CGFloat = 17
     @State private var state: Phase = .rendering
     @State private var showSource = false
 
     enum Phase { case rendering, ready(Artwork), failed(String) }
 
-    public init(_ tex: String, displayMode: Bool = true, fontSize: CGFloat = 17) {
+    /// Creates a view whose default size follows Dynamic Type.
+    ///
+    /// - Parameters:
+    ///   - tex: TeX source without delimiters.
+    ///   - displayMode: Whether to use display layout instead of inline layout.
+    public init(_ tex: String, displayMode: Bool = true) {
         self.tex = tex
         self.displayMode = displayMode
-        self.fontSize = fontSize
+        self.explicitFontSize = nil
     }
 
-    private var color: String { Color.cssHex(Color.primary.resolve(in: environment)) }
+    /// Creates a view with an explicit, unscaled point size.
+    ///
+    /// - Parameters:
+    ///   - tex: TeX source without delimiters.
+    ///   - displayMode: Whether to use display layout instead of inline layout.
+    ///   - fontSize: A fixed point size. Scale it in the caller if desired.
+    public init(_ tex: String, displayMode: Bool = true, fontSize: CGFloat) {
+        self.tex = tex
+        self.displayMode = displayMode
+        self.explicitFontSize = fontSize
+    }
 
+    private var fontSize: CGFloat { explicitFontSize ?? scaledFontSize }
+    private var color: String { Color.cssHex((mathColor ?? .primary).resolve(in: environment)) }
+    private var renderer: KaTeXRenderer { injectedRenderer ?? .shared }
+    private var inlineBaselineFraction: CGFloat? {
+        guard !displayMode, !showSource, case .ready(let artwork) = state,
+              artwork.size.height > 0 else { return nil }
+        return artwork.baseline / artwork.size.height
+    }
+
+    private struct RenderID: Hashable {
+        let key: ArtworkCache.Key
+        let renderer: ObjectIdentifier
+    }
+
+    /// The rendered formula, a placeholder, or its source and an error message.
     public var body: some View {
-        Group {
+        let baselineFraction = inlineBaselineFraction
+        return Group {
             if showSource {
                 source(note: nil)
             } else {
@@ -41,6 +80,14 @@ public struct MathView: View {
             }
         }
         .frame(maxWidth: displayMode ? .infinity : nil, alignment: displayMode ? .center : .leading)
+        .alignmentGuide(.firstTextBaseline) { dimensions in
+            guard let baselineFraction else { return dimensions[.firstTextBaseline] }
+            return baselineFraction * dimensions.height
+        }
+        .alignmentGuide(.lastTextBaseline) { dimensions in
+            guard let baselineFraction else { return dimensions[.lastTextBaseline] }
+            return baselineFraction * dimensions.height
+        }
         .contextMenu {
             Button(showSource ? "Show Rendered" : "Show Source") { showSource.toggle() }
             Button("Copy Source") { copy(tex) }
@@ -48,7 +95,9 @@ public struct MathView: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("Formula"))
         .accessibilityValue(Text(tex))
-        .task(id: KaTeXRenderer.key(tex, displayMode, fontSize, color)) { await render() }
+        .task(id: RenderID(key: KaTeXRenderer.key(tex, displayMode, fontSize, color), renderer: ObjectIdentifier(renderer))) {
+            await render()
+        }
     }
 
     private func source(note: String?) -> some View {
@@ -62,7 +111,7 @@ public struct MathView: View {
 
     private func render() async {
         guard !Task.isCancelled else { return }
-        let renderer = KaTeXRenderer.shared
+        let renderer = renderer
         if let hit = renderer.cached(tex, displayMode: displayMode, fontSize: fontSize, color: color) {
             apply(hit); return
         }
