@@ -1,0 +1,42 @@
+name: Swift
+
+"on":
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  macos:
+    runs-on: xcode-27
+    timeout-minutes: 20
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+      - name: Test
+        run: swift test
+
+  ios:
+    runs-on: xcode-27
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show toolchain and simulators
+        run: |
+          xcodebuild -version
+          swift --version
+          xcrun simctl list devices available
+      - name: Test
+        run: >-
+          xcodebuild test -scheme Swift-KaTeX
+          -destination 'platform=iOS Simulator,name=iPhone 17,OS=27.2'
+          CODE_SIGNING_ALLOWED=NO

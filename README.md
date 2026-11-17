@@ -2,6 +2,22 @@
 
 TeX math for SwiftUI, rendered by the bundled [KaTeX](https://katex.org) 0.19.1 to **vector PDF artwork**.
 
+## Installation
+
+Add `https://github.com/ThorFuchs/Swift-KaTeX.git` as a Swift package dependency
+and add the `KaTeX` product to your target. For a SwiftPM package:
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/ThorFuchs/Swift-KaTeX.git", from: "0.1.0"),
+],
+targets: [
+    .target(name: "YourTarget", dependencies: [.product(name: "KaTeX", package: "Swift-KaTeX")]),
+]
+```
+
+## Usage
+
 ```swift
 import KaTeX
 
@@ -23,17 +39,27 @@ art.baseline  // from the top, for inline alignment
   - its context menu has **Show Source** and **Copy Source**;
   - VoiceOver reads the TeX.
 - **Rejected formulas stay visible.** A formula KaTeX rejects shows its source with KaTeX's reason, never a blank.
+- `fontSize` is an explicit point size, not an automatically scaled Dynamic Type text style. For accessible scaling, pass a value derived from `@ScaledMetric` in the containing view.
+- Inline artwork exposes a baseline from its top through `Artwork.baseline`; `MathView` does not currently provide custom baseline alignment with adjacent SwiftUI text.
 
 ## Safety
 
 - **The TeX is data.** It is passed as an argument to the page, never interpolated into script.
 - **Nothing is loaded from the network.** Every `http`/`https` load is blocked, and the CSP allows only the package's own script, styles and fonts.
 - **KaTeX runs with `trust: false`:** `\href`, `\url` and `\includegraphics` render as text, never as links or loads.
+- Sources are limited to 20,000 Swift characters; KaTeX uses `maxExpand: 1000` and `maxSize: 50`. Waiting in the render queue is limited to 30 seconds. Content-rule compilation, page loading, JavaScript rendering, and PDF creation each have their own 10-second deadline. These are asynchronous operation deadlines, not a process sandbox or a complete resource limit for untrusted input.
+
+## Related project
+
+[Swift-MD](https://github.com/ThorFuchs/Swift-MD) has an experimental, opt-in server-side KaTeX adapter. It runs a configured local Node installation and emits MathML for `math` code fences; it does not depend on this Apple-only WebKit package. Its KaTeX settings and input limits differ, so identical output and error handling should not be assumed. Both currently use KaTeX 0.19.1 in their checked-in configurations.
 
 ## Requirements
 
 - macOS 14, iOS 17 or visionOS 1, and Swift 6.4 tools.
-- Tested on macOS.
+- Tested on macOS and the iOS Simulator. The visionOS Simulator build is supported; runtime tests are pending.
+- The package uses SwiftUI and WebKit and does not support Linux.
+- tvOS is not supported: its SDK does not provide the WebKit module used by the renderer.
+- Run `swift test` on macOS. The rendering tests require a working WebKit content process.
 
 ## Updating KaTeX
 
@@ -43,7 +69,7 @@ Scripts/update-upstream.sh 0.19.1
 
 - The script checks the npm registry integrity before it replaces anything, and rewrites `Upstream.json`.
 - `swift test` then verifies every bundled file against `Upstream.json`.
-- Adopt a new version only after it has been public for two weeks.
+- Check that a new version has been public for two weeks before adopting it; the script reports the publication date but does not enforce this policy.
 - Set `SWIFT_KATEX_SAMPLES=<dir>` while running `swift test` to write sample PDFs for a visual check in light and dark.
 
 ## License

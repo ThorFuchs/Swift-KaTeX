@@ -42,12 +42,24 @@ struct ArtworkCanvas: View {
 }
 
 /// A small bounded cache shared by a renderer's views.
-final class ArtworkCache: @unchecked Sendable {
+@MainActor final class ArtworkCache {
+    struct Key: Hashable {
+        let tex: String
+        let displayMode: Bool
+        let fontSize: CGFloat
+        let color: String
+    }
+    private final class CacheKey: NSObject {
+        let value: Key
+        init(_ value: Key) { self.value = value }
+        override var hash: Int { value.hashValue }
+        override func isEqual(_ object: Any?) -> Bool { (object as? CacheKey)?.value == value }
+    }
     private final class Box { let value: Result<Artwork, any Error>; init(_ v: Result<Artwork, any Error>) { value = v } }
-    private let cache: NSCache<NSString, Box> = { let c = NSCache<NSString, Box>(); c.countLimit = 4_000; return c }()
+    private let cache: NSCache<CacheKey, Box> = { let c = NSCache<CacheKey, Box>(); c.countLimit = 4_000; return c }()
 
-    func value(_ key: String) -> Result<Artwork, any Error>? { cache.object(forKey: key as NSString)?.value }
-    func store(_ key: String, _ value: Result<Artwork, any Error>) { cache.setObject(Box(value), forKey: key as NSString) }
+    func value(_ key: Key) -> Result<Artwork, any Error>? { cache.object(forKey: CacheKey(key))?.value }
+    func store(_ key: Key, _ value: Result<Artwork, any Error>) { cache.setObject(Box(value), forKey: CacheKey(key)) }
 }
 
 extension Color {

@@ -39,11 +39,16 @@ public enum KaTeXError: Error, Sendable, Equatable {
     ///   - fontSize: point size of the surrounding text.
     ///   - color: a CSS color, normally the resolved primary text color.
     public func render(_ tex: String, displayMode: Bool = true, fontSize: CGFloat = 17, color: String = "#000000") async throws -> Artwork {
+        try Task.checkCancellation()
+        guard tex.count <= Self.maximumSourceLength else { throw KaTeXError.tooLong }
+        guard fontSize.isFinite, fontSize > 0 else { throw KaTeXError.engine("fontSize must be finite and positive") }
         let key = Self.key(tex, displayMode, fontSize, color)
         if let hit = cache.value(key) { return try hit.get() }
         let result: Result<Artwork, any Error>
         do {
             result = .success(try await draw(tex, displayMode, fontSize, color))
+        } catch is CancellationError {
+            throw CancellationError()
         } catch let error as KaTeXError {
             result = .failure(error)
         } catch {
@@ -54,7 +59,6 @@ public enum KaTeXError: Error, Sendable, Equatable {
     }
 
     private func draw(_ tex: String, _ display: Bool, _ fontSize: CGFloat, _ color: String) async throws -> Artwork {
-        guard tex.count <= Self.maximumSourceLength else { throw KaTeXError.tooLong }
         return try await host.exclusive { view in
             let r = try await host.call(view, "return await window.renderTeX(tex, display, fontPx, color);",
                                         arguments: ["tex": tex, "display": display, "fontPx": Double(fontSize), "color": color],
@@ -68,7 +72,7 @@ public enum KaTeXError: Error, Sendable, Equatable {
         }
     }
 
-    static func key(_ tex: String, _ display: Bool, _ fontSize: CGFloat, _ color: String) -> String {
-        "\(display ? "D" : "I")|\(fontSize)|\(color)|\(tex)"
+    static func key(_ tex: String, _ display: Bool, _ fontSize: CGFloat, _ color: String) -> ArtworkCache.Key {
+        ArtworkCache.Key(tex: tex, displayMode: display, fontSize: fontSize, color: color)
     }
 }
