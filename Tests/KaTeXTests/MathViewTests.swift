@@ -90,18 +90,23 @@ import Testing
         let baseline = BaselineRecorder()
         let root = AnyView(InlineMath(source, fontSize: 20) { formula in
             BaselineProbe(recorder: baseline, width: 200) {
-                formula.onChange(of: formula, initial: true) {
-                    recorder.formula = formula
-                    let snapshot = ImageRenderer(content: formula)
-                    snapshot.scale = 2
-                    recorder.image = snapshot.cgImage
-                }
+                formula.onChange(of: formula, initial: true) { recorder.formula = formula }
             }
         }.mathRenderer(renderer).mathColor(.black).environment(\.displayScale, 2))
         let (window, _) = window(root)
         defer { close(window) }
         try await waitUntil { recorder.formula != nil && recorder.formula != Text(verbatim: source) }
-        try await waitUntil { baseline.sample != nil && recorder.image != nil }
+        // ImageRenderer can return a transparent image while the simulator's
+        // image provider is still preparing the rendered Text. Wait for pixels
+        // rather than treating that transient frame as the final result.
+        try await waitUntil {
+            guard let formula = recorder.formula, baseline.sample != nil else { return false }
+            let snapshot = ImageRenderer(content: formula)
+            snapshot.scale = 2
+            guard let image = snapshot.cgImage, visibleTop(image) != nil else { return false }
+            recorder.image = image
+            return true
+        }
         let sample = try #require(baseline.sample)
         let rendered = try #require(recorder.image)
         let original = try #require(inlineImage(artwork, scale: 2))
