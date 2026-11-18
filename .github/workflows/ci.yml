@@ -37,8 +37,31 @@ jobs:
           xcodebuild -version
           swift --version
           xcrun simctl list devices available
+      - name: Boot iOS simulator
+        run: |
+          simulator_id=$(xcrun simctl list devices available --json | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          matches = [device["udid"] for runtime, group in devices.items()
+                     if runtime.endswith("iOS-27-2") for device in group
+                     if device["name"] == "iPhone 17" and device["isAvailable"]]
+          if len(matches) != 1:
+              raise SystemExit(f"Expected one iPhone 17 on iOS 27.2, found {len(matches)}")
+          print(matches[0])')
+          echo "SIMULATOR_ID=$simulator_id" >> "$GITHUB_ENV"
+          xcrun simctl bootstatus "$simulator_id" -b
       - name: Test
         run: >-
           xcodebuild test -scheme Swift-KaTeX
-          -destination 'platform=iOS Simulator,name=iPhone 17,OS=27.2'
+          -destination "platform=iOS Simulator,id=$SIMULATOR_ID"
+          -parallel-testing-enabled NO
+          -resultBundlePath "$RUNNER_TEMP/KaTeX-iOS.xcresult"
           CODE_SIGNING_ALLOWED=NO
+      - name: Verify iOS test results
+        run: |
+          xcrun xcresulttool get test-results summary --path "$RUNNER_TEMP/KaTeX-iOS.xcresult" | python3 -c '
+          import json, sys
+          summary = json.load(sys.stdin)
+          if summary["result"] != "Passed" or summary["passedTests"] == 0:
+              raise SystemExit("iOS tests did not pass or no tests ran")
+          print("iOS tests passed:", summary["passedTests"])'

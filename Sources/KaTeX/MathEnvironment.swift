@@ -10,7 +10,7 @@ extension View {
     /// Uses a renderer for mathematical views in this view hierarchy.
     ///
     /// The renderer owns its own WebKit host and cache. Without this modifier,
-    /// ``MathView`` uses ``KaTeXRenderer/shared``.
+    /// ``MathView`` and ``InlineMath`` use ``KaTeXRenderer/shared``.
     ///
     /// - Parameter renderer: The renderer to use for descendant math views.
     public func mathRenderer(_ renderer: KaTeXRenderer) -> some View {

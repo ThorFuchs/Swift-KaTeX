@@ -42,6 +42,157 @@ import Testing
 
     private struct TestTimeout: Error {}
 
+    @Test func inlineMathComposesAsTextAndUpdatesItsInputs() async throws {
+        let source = #"\frac{a}{b} + x"#
+        let secondSource = #"\sqrt{y}"#
+        let first = KaTeXRenderer()
+        let second = KaTeXRenderer()
+        let recorder = InlineTextRecorder()
+        func view(_ tex: String, _ renderer: KaTeXRenderer, _ color: Color) -> AnyView {
+            AnyView(InlineMath(tex, fontSize: 20) { formula in
+                Text("A paragraph containing \(formula) and enough words to wrap over several lines.")
+                    .onChange(of: formula, initial: true) { recorder.formula = formula }
+            }.mathRenderer(renderer).mathColor(color).frame(width: 120))
+        }
+        let red = Color(.sRGB, red: 1, green: 0, blue: 0)
+        let blue = Color(.sRGB, red: 0, green: 0, blue: 1)
+        let (window, host) = window(view(source, first, red))
+        defer { close(window) }
+        try await waitUntil { recorder.formula != nil && recorder.formula != Text(verbatim: source) }
+        _ = try #require(first.cached(source, displayMode: false, fontSize: 20, color: "#ff0000")).get()
+        let firstFormula = try #require(recorder.formula)
+        host.rootView = view(source, first, blue)
+        try await waitUntil { first.cached(source, displayMode: false, fontSize: 20, color: "#0000ff") != nil }
+        try await waitUntil { recorder.formula != nil && recorder.formula != Text(verbatim: source) && recorder.formula != firstFormula }
+        _ = try #require(first.cached(source, displayMode: false, fontSize: 20, color: "#0000ff")).get()
+        host.rootView = view(source, second, blue)
+        try await waitUntil { second.cached(source, displayMode: false, fontSize: 20, color: "#0000ff") != nil }
+        _ = try #require(second.cached(source, displayMode: false, fontSize: 20, color: "#0000ff")).get()
+        let previousFormula = try #require(recorder.formula)
+        host.rootView = view(secondSource, second, blue)
+        try await waitUntil { second.cached(secondSource, displayMode: false, fontSize: 20, color: "#0000ff") != nil }
+        try await waitUntil { recorder.formula != nil && recorder.formula != Text(verbatim: secondSource) && recorder.formula != previousFormula }
+        _ = try #require(second.cached(secondSource, displayMode: false, fontSize: 20, color: "#0000ff")).get()
+        let invalid = #"\notARealCommand"#
+        host.rootView = view(invalid, second, blue)
+        try await waitUntil { second.cached(invalid, displayMode: false, fontSize: 20, color: "#0000ff") != nil }
+        try await waitUntil { recorder.formula == Text(verbatim: invalid) }
+        if case .failure(KaTeXError.parse) = second.cached(invalid, displayMode: false, fontSize: 20, color: "#0000ff") {} else {
+            Issue.record("Invalid TeX should remain visible as source")
+        }
+    }
+
+    @Test(arguments: [#"x_{i}"#, #"\frac{a}{b}"#, #"\int_0^1 x\,dx"#])
+    func inlineMathTextUsesTheMeasuredBaseline(_ source: String) async throws {
+        let renderer = KaTeXRenderer()
+        let artwork = try await renderer.render(source, displayMode: false, fontSize: 20)
+        let recorder = InlineTextRecorder()
+        let baseline = BaselineRecorder()
+        let root = AnyView(InlineMath(source, fontSize: 20) { formula in
+            BaselineProbe(recorder: baseline, width: 200) {
+                formula.onChange(of: formula, initial: true) {
+                    recorder.formula = formula
+                    let snapshot = ImageRenderer(content: formula)
+                    snapshot.scale = 2
+                    recorder.image = snapshot.cgImage
+                }
+            }
+        }.mathRenderer(renderer).mathColor(.black).environment(\.displayScale, 2))
+        let (window, _) = window(root)
+        defer { close(window) }
+        try await waitUntil { recorder.formula != nil && recorder.formula != Text(verbatim: source) }
+        try await waitUntil { baseline.sample != nil && recorder.image != nil }
+        let sample = try #require(baseline.sample)
+        let rendered = try #require(recorder.image)
+        let original = try #require(inlineImage(artwork, scale: 2))
+        let imageTop = try #require(visibleTop(rendered)) - #require(visibleTop(original))
+        #expect(abs(sample.first - (CGFloat(imageTop) / 2 + artwork.baseline)) < 2,
+                "Text baseline \(sample.first), image top \(CGFloat(imageTop) / 2), artwork baseline \(artwork.baseline)")
+    }
+
+    @Test func inlineParagraphWrapsAroundTheFormula() async throws {
+        let source = #"x^2"#
+        let renderer = KaTeXRenderer()
+        let recorder = InlineTextRecorder()
+        let dimensions = BaselineRecorder()
+        func root(_ width: CGFloat) -> AnyView {
+            AnyView(InlineMath(source, fontSize: 20) { formula in
+                BaselineProbe(recorder: dimensions, width: width) {
+                    Text("A wrapping paragraph with \(formula) followed by several more words.")
+                        .onChange(of: formula, initial: true) { recorder.formula = formula }
+                }
+            }.mathRenderer(renderer).mathColor(.black))
+        }
+        let (window, host) = window(root(800))
+        defer { close(window) }
+        try await waitUntil { recorder.formula != nil && recorder.formula != Text(verbatim: source) }
+        try await waitUntil { dimensions.sample != nil }
+        let wideHeight = try #require(dimensions.sample).height
+        host.rootView = root(120)
+        try await waitUntil { (dimensions.sample?.height ?? 0) > wideHeight * 1.5 }
+        #expect(try #require(dimensions.sample).height > wideHeight * 1.5)
+    }
+
+    @Test func inlineImageUsesDisplayScaleAndLimitsAllocations() async throws {
+        let artwork = try await KaTeXRenderer().render(#"x^2"#, displayMode: false, fontSize: 20)
+        let image = try #require(inlineImage(artwork, scale: 2))
+        #expect(image.width == Int(ceil(artwork.size.width * 2)))
+        #expect(image.height == Int(ceil(artwork.size.height * 2)))
+        #expect(visibleTop(image) != nil)
+        #expect(inlineImage(artwork, scale: .infinity) == nil)
+        let huge = Artwork(pdf: artwork.pdf, size: CGSize(width: 9000, height: 10), baseline: 5)
+        #expect(inlineImage(huge, scale: 1) == nil)
+    }
+
+    @Test func inlineMathRespondsToDynamicType() async throws {
+        let source = #"x_{dynamic}"#
+        let renderer = KaTeXRenderer()
+        let sizes = ScaledSizeRecorder()
+        func root(_ dynamicSize: DynamicTypeSize) -> AnyView {
+            AnyView(InlineScaledSizeProbe(source: source, sizes: sizes)
+                .mathRenderer(renderer).mathColor(.black)
+                .environment(\.dynamicTypeSize, dynamicSize))
+        }
+        let (window, host) = window(root(.large))
+        defer { close(window) }
+        try await waitUntil { sizes.value != nil }
+        let normalSize = try #require(sizes.value)
+        try await waitUntil { renderer.cached(source, displayMode: false, fontSize: normalSize, color: "#000000") != nil }
+        host.rootView = root(.accessibility3)
+        #if os(iOS)
+        try await waitUntil { (sizes.value ?? 0) > normalSize }
+        let enlarged = try #require(sizes.value)
+        try await waitUntil { renderer.cached(source, displayMode: false, fontSize: enlarged, color: "#000000") != nil }
+        _ = try #require(renderer.cached(source, displayMode: false, fontSize: enlarged, color: "#000000")).get()
+        #endif
+    }
+
+    @Test func inlineMathUpdatesForAppearanceAndDisplayScale() async throws {
+        let source = #"x_{appearance}"#
+        let renderer = KaTeXRenderer()
+        let colors = ColorRecorder()
+        let recorder = InlineTextRecorder()
+        func root(_ scheme: ColorScheme, _ scale: CGFloat) -> AnyView {
+            AnyView(InlineColorProbe(source: source, colors: colors, recorder: recorder)
+                .mathRenderer(renderer).mathColor(.primary)
+                .environment(\.colorScheme, scheme).environment(\.displayScale, scale))
+        }
+        let (window, host) = window(root(.light, 2))
+        defer { close(window) }
+        try await waitUntil { colors.value != nil && recorder.formula != nil && recorder.formula != Text(verbatim: source) }
+        let light = try #require(colors.value)
+        let first = try #require(recorder.formula)
+        _ = try #require(renderer.cached(source, displayMode: false, fontSize: 20, color: light)).get()
+        host.rootView = root(.dark, 2)
+        try await waitUntil { colors.value != nil && colors.value != light }
+        let dark = try #require(colors.value)
+        try await waitUntil { renderer.cached(source, displayMode: false, fontSize: 20, color: dark) != nil }
+        try await waitUntil { recorder.formula != nil && recorder.formula != Text(verbatim: source) && recorder.formula != first }
+        let darkFormula = try #require(recorder.formula)
+        host.rootView = root(.dark, 3)
+        try await waitUntil { recorder.formula != nil && recorder.formula != Text(verbatim: source) && recorder.formula != darkFormula }
+    }
+
     @Test func defaultsToTheSharedRenderer() async throws {
         let source = #"x_{\mathrm{shared}}+42"#
         let (window, _) = window(AnyView(MathView(source, fontSize: 19).mathColor(.black)))
@@ -170,6 +321,20 @@ import Testing
 
 @MainActor private final class ScaledSizeRecorder { var value: CGFloat? }
 @MainActor private final class ColorRecorder { var value: String? }
+@MainActor private final class InlineTextRecorder { var formula: Text?; var image: CGImage? }
+
+private func visibleTop(_ image: CGImage) -> Int? {
+    let width = image.width, height = image.height
+    var bytes = [UInt8](repeating: 0, count: width * height * 4)
+    guard let context = CGContext(data: &bytes, width: width, height: height, bitsPerComponent: 8,
+                                  bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+    context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+    for y in 0..<height {
+        for x in 0..<width where bytes[(y * width + x) * 4 + 3] > 8 { return y }
+    }
+    return nil
+}
 
 private struct ColorProbe: View {
     let source: String
@@ -193,6 +358,35 @@ private struct ScaledSizeProbe: View {
     var body: some View {
         MathView(source)
             .onChange(of: scaledSize, initial: true) { sizes.value = scaledSize }
+    }
+}
+
+private struct InlineScaledSizeProbe: View {
+    let source: String
+    let sizes: ScaledSizeRecorder
+    @ScaledMetric(relativeTo: .body) private var scaledSize: CGFloat = 17
+
+    var body: some View {
+        InlineMath(source) { formula in
+            formula.onChange(of: scaledSize, initial: true) { sizes.value = scaledSize }
+        }
+    }
+}
+
+private struct InlineColorProbe: View {
+    let source: String
+    let colors: ColorRecorder
+    let recorder: InlineTextRecorder
+    @Environment(\.self) private var environment
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        InlineMath(source, fontSize: 20) { formula in
+            formula.onChange(of: formula, initial: true) { recorder.formula = formula }
+        }
+        .onChange(of: scheme, initial: true) {
+            colors.value = Color.cssHex(Color.primary.resolve(in: environment))
+        }
     }
 }
 

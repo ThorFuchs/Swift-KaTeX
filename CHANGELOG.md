@@ -1,11 +1,13 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 (2026-11-18)
 
+- Add `InlineMath` for interpolating one image-based formula into a wrapping SwiftUI `Text` paragraph, with a source fallback and accessibility label.
 - Add optional renderer and color injection for math view hierarchies.
 - Scale the default math size with Dynamic Type while preserving explicit point sizes.
 - Align inline formulas with adjacent views using their measured baseline.
 - Add DocC API documentation, guides, and automated documentation checks.
+- Wait for the iOS simulator to finish booting before starting CI tests.
 
 ## 0.1.1 (2026-11-17)
 

@@ -9,7 +9,7 @@ and add the `KaTeX` product to your target. For a SwiftPM package:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/ThorFuchs/Swift-KaTeX.git", from: "0.1.1"),
+    .package(url: "https://github.com/ThorFuchs/Swift-KaTeX.git", from: "0.2.0"),
 ],
 targets: [
     .target(name: "YourTarget", dependencies: [.product(name: "KaTeX", package: "Swift-KaTeX")]),
@@ -34,6 +34,33 @@ The default font size follows Dynamic Type. A `fontSize` passed explicitly is
 a fixed point size; use `@ScaledMetric` in the caller if that size should scale.
 For inline math, an `HStack(alignment: .firstTextBaseline)` aligns the formula
 with adjacent views. This doesn't insert a view into a wrapping `Text` paragraph.
+
+For a single formula in a wrapping paragraph, `InlineMath` supplies a `Text`
+value that can be interpolated:
+
+```swift
+import KaTeX
+import SwiftUI
+
+struct FormulaParagraph: View {
+    var body: some View {
+        InlineMath(#"E = mc^2"#) { formula in
+            Text("Einstein showed that \(formula) relates mass and energy.")
+        }
+    }
+}
+```
+
+The formula is an image in the paragraph, rendered asynchronously at display
+resolution. Its source is shown while loading and if rendering fails. The
+paragraph wraps around it, but the formula doesn't split across lines. When
+the closure returns `Text`, the paragraph's accessibility label includes
+the TeX source. For other returned views, provide an accessibility label on
+the view yourself. Use an explicit paragraph label for a spoken mathematical
+description, and verify VoiceOver in your app.
+Copying or selecting the image doesn't guarantee TeX output. The default size
+scales with body Dynamic Type, not with arbitrary paragraph fonts; `fontSize:`
+specifies a fixed point size.
 
 Use the following modifiers on a math view or an ancestor to select a color and
 share a custom renderer. Without them, math uses the primary color and
