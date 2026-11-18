@@ -25,6 +25,19 @@ MathView(#"\int_0^1 x^2\,dx = \frac{1}{3}"#)
 - <doc:ErrorsAndCaching>
 - <doc:SecurityAndLimits>
 
+### Learn mathematical notation
+
+- <doc:MathNotation>
+- <doc:MathQuickReference>
+- <doc:MathSourceAndGroups>
+- <doc:MathFractionsAndRoots>
+- <doc:MathSymbolsAndAccents>
+- <doc:MathOperatorsAndLimits>
+- <doc:MathMatricesAndEquations>
+- <doc:MathSpacingAndStyle>
+- <doc:MathCompatibility>
+- <doc:MathGallery>
+
 ### Display and rendering
 
 - ``MathView``

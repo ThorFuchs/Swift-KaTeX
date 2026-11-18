@@ -9,7 +9,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parent.parent
 CATALOG = ROOT / "Sources/KaTeX/KaTeX.docc"
-GUIDES = ("GettingStarted", "DisplayingMath", "RenderingAndExport", "ErrorsAndCaching")
+GUIDES = ("GettingStarted", "DisplayingMath", "RenderingAndExport", "ErrorsAndCaching", "MathNotation")
 
 
 def main():

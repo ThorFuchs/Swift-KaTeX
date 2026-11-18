@@ -2,6 +2,26 @@
 
 TeX math for SwiftUI, rendered by the bundled [KaTeX](https://katex.org) 0.19.1 to **vector PDF artwork**.
 
+## Gallery
+
+Explore eight editable examples in the [macOS SwiftUI gallery](Examples/KaTeXGallery/README.md).
+The images below are captured from its real `MathView` and `InlineMath` cards.
+For notation and examples, see the [DocC mathematics guide](Sources/KaTeX/KaTeX.docc/MathNotation.md).
+
+| Fractions and roots | Integrals |
+| --- | --- |
+| ![A quadratic formula with a fraction and square root](Sources/KaTeX/KaTeX.docc/Resources/fractions.png) | ![A definite integral](Sources/KaTeX/KaTeX.docc/Resources/calculus.png) |
+| [TeX source](Examples/KaTeXGallery/Sources/GalleryContent/Formulas/fractions.tex) | [TeX source](Examples/KaTeXGallery/Sources/GalleryContent/Formulas/calculus.tex) |
+| **Series and limits** | **Matrices** |
+| ![An infinite sum](Sources/KaTeX/KaTeX.docc/Resources/series.png) | ![A matrix transformation](Sources/KaTeX/KaTeX.docc/Resources/matrix.png) |
+| [TeX source](Examples/KaTeXGallery/Sources/GalleryContent/Formulas/series.tex) | [TeX source](Examples/KaTeXGallery/Sources/GalleryContent/Formulas/matrix.tex) |
+| **Piecewise functions** | **Sets and logic** |
+| ![A piecewise function](Sources/KaTeX/KaTeX.docc/Resources/cases.png) | ![A statement about real numbers](Sources/KaTeX/KaTeX.docc/Resources/symbols.png) |
+| [TeX source](Examples/KaTeXGallery/Sources/GalleryContent/Formulas/cases.tex) | [TeX source](Examples/KaTeXGallery/Sources/GalleryContent/Formulas/symbols.tex) |
+| **Aligned equations** | **Inline math** |
+| ![An aligned algebraic derivation](Sources/KaTeX/KaTeX.docc/Resources/aligned.png) | ![A formula inside a SwiftUI paragraph](Sources/KaTeX/KaTeX.docc/Resources/inline.png) |
+| [TeX source](Examples/KaTeXGallery/Sources/GalleryContent/Formulas/aligned.tex) | [TeX source](Examples/KaTeXGallery/Sources/GalleryContent/Formulas/inline.tex) |
+
 ## Installation
 
 Add `https://github.com/ThorFuchs/Swift-KaTeX.git` as a Swift package dependency
@@ -9,7 +29,7 @@ and add the `KaTeX` product to your target. For a SwiftPM package:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/ThorFuchs/Swift-KaTeX.git", from: "0.2.0"),
+    .package(url: "https://github.com/ThorFuchs/Swift-KaTeX.git", from: "0.2.1"),
 ],
 targets: [
     .target(name: "YourTarget", dependencies: [.product(name: "KaTeX", package: "Swift-KaTeX")]),

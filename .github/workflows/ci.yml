@@ -24,6 +24,10 @@ jobs:
         run: Scripts/build-docc.sh "$RUNNER_TEMP/katex-docc-build" "$RUNNER_TEMP/KaTeX.doccarchive"
       - name: Test
         run: swift test
+      - name: Test gallery formulas
+        run: swift test --package-path Examples/KaTeXGallery
+      - name: Validate DocC TeX examples
+        run: swift run --package-path Examples/KaTeXGallery DocumentationExamples Sources/KaTeX/KaTeX.docc
 
   ios:
     runs-on: xcode-27

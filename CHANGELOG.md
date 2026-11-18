@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1 (2026-11-18)
+
+- Add a runnable SwiftUI formula gallery, source examples, and reproducible screenshots.
+- Add a task-oriented DocC guide to KaTeX notation, with upstream references and executable examples.
+
 ## 0.2.0 (2026-11-18)
 
 - Add `InlineMath` for interpolating one image-based formula into a wrapping SwiftUI `Text` paragraph, with a source fallback and accessibility label.
